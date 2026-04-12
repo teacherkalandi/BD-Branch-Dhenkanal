@@ -22,11 +22,13 @@ import {
   User as UserIcon,
   ShieldCheck,
   Trash2,
-  Plus
+  Plus,
+  Youtube,
+  Video,
+  Menu
 } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, storage } from './firebase';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
 import { doc, setDoc, getDoc, collection, onSnapshot, addDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, UploadTask } from 'firebase/storage';
 import { db } from './firebase';
 
 enum OperationType {
@@ -195,10 +197,7 @@ export default function App() {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [resourceToDelete, setResourceToDelete] = useState<{ id: string; title: string } | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadMethod, setUploadMethod] = useState<'link' | 'file'>('link');
-  const [currentUploadTask, setCurrentUploadTask] = useState<UploadTask | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const showNotify = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -287,65 +286,73 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       {/* Header */}
-      <header className="bg-[#E31837] text-white shadow-md border-b-2 border-[#FFC220]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 md:gap-4">
+      <header className="bg-[#E31837] text-white shadow-md border-b-2 border-[#FFC220] sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
             {/* Indian National Emblem */}
             <img 
               src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" 
               alt="Emblem of India" 
-              className="h-12 md:h-16 w-auto brightness-0 invert" 
+              className="h-10 md:h-16 w-auto brightness-0 invert" 
               referrerPolicy="no-referrer"
             />
-            <h1 className="text-lg md:text-2xl font-bold tracking-tight leading-tight">
+            <h1 className="text-sm md:text-2xl font-bold tracking-tight leading-tight">
               Business Development Branch
-              <span className="block text-[10px] md:text-xs font-normal opacity-80">Dhenkanal Postal Division</span>
+              <span className="block text-[8px] md:text-xs font-normal opacity-80">Dhenkanal Postal Division</span>
             </h1>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             {user ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 md:gap-4">
                 {isAdmin && (
                   <button 
                     onClick={() => setShowAdminPanel(!showAdminPanel)}
-                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#FFC220] text-gray-900 rounded-lg font-semibold hover:bg-yellow-400 transition-colors text-sm"
+                    className="hidden lg:flex items-center gap-2 px-4 py-2 bg-[#FFC220] text-gray-900 rounded-lg font-semibold hover:bg-yellow-400 transition-colors text-sm"
                   >
                     <ShieldCheck size={16} />
                     {showAdminPanel ? 'Exit Admin' : 'Admin Panel'}
                   </button>
                 )}
-                <div className="flex items-center gap-3 bg-white/10 p-1.5 pr-4 rounded-full border border-white/20">
-                <img 
-                  src={user.photoURL || ''} 
-                  alt={user.displayName || ''} 
-                  className="w-8 h-8 rounded-full border border-white/50"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="hidden md:block">
-                  <p className="text-xs font-bold leading-none">{user.displayName}</p>
-                  <p className="text-[10px] opacity-70 leading-none mt-1">Logged In</p>
+                <div className="flex items-center gap-2 md:gap-3 bg-white/10 p-1 md:p-1.5 md:pr-4 rounded-full border border-white/20">
+                  <img 
+                    src={user.photoURL || ''} 
+                    alt={user.displayName || ''} 
+                    className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-white/50"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="hidden sm:block">
+                    <p className="text-[10px] md:text-xs font-bold leading-none">{user.displayName}</p>
+                    <p className="text-[8px] md:text-[10px] opacity-70 leading-none mt-1">Logged In</p>
+                  </div>
+                  <button 
+                    onClick={handleLogout}
+                    className="p-1 md:p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                    title="Logout"
+                  >
+                    <LogOut size={16} className="md:w-[18px] md:h-[18px]" />
+                  </button>
                 </div>
-                <button 
-                  onClick={handleLogout}
-                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                  title="Logout"
-                >
-                  <LogOut size={18} />
-                </button>
               </div>
-            </div>
-          ) : (
-            <button 
-              onClick={handleLogin}
-                className="flex items-center gap-2 bg-[#FFC220] text-gray-900 px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#e6af1d] transition-colors shadow-sm"
+            ) : (
+              <button 
+                onClick={handleLogin}
+                className="flex items-center gap-1.5 bg-[#FFC220] text-gray-900 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-bold text-xs md:text-sm hover:bg-[#e6af1d] transition-colors shadow-sm"
               >
-                <LogIn size={18} />
+                <LogIn size={16} className="md:w-[18px] md:h-[18px]" />
                 Login
               </button>
             )}
+            
+            <button 
+              className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+
             {/* India Post Logo */}
-            <div className="bg-white p-1 md:p-1.5 rounded-md shadow-sm shrink-0 hidden sm:block">
+            <div className="bg-white p-1 rounded-md shadow-sm shrink-0 hidden md:block">
               <img 
                 src="https://upload.wikimedia.org/wikipedia/en/3/32/India_Post.svg" 
                 alt="India Post Logo" 
@@ -355,16 +362,91 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="lg:hidden bg-white border-t border-gray-100 overflow-hidden"
+            >
+              <div className="px-4 py-4 space-y-2">
+                {[
+                  { name: 'Dashboard', href: '#dashboard', icon: <LayoutDashboard size={20} /> },
+                  { name: 'Documents', href: '#documents', type: 'document', icon: <FileText size={20} /> },
+                  { name: 'Forms', href: '#forms', type: 'form', icon: <ClipboardList size={20} /> },
+                  { name: 'Videos', href: '#videos', type: 'video', icon: <Youtube size={20} /> },
+                  ...(isAdmin ? [{ name: 'Admin Panel', onClick: () => { setShowAdminPanel(!showAdminPanel); setIsMobileMenuOpen(false); }, icon: <ShieldCheck size={20} /> }] : [])
+                ].map((item) => (
+                  <div key={item.name} className="space-y-1">
+                    <a
+                      href={item.href || '#'}
+                      onClick={(e) => {
+                        if (item.onClick) {
+                          e.preventDefault();
+                          item.onClick();
+                        } else if (!item.type) {
+                          setIsMobileMenuOpen(false);
+                        }
+                      }}
+                      className="flex items-center justify-between p-3 rounded-xl text-gray-700 font-bold hover:bg-gray-50 hover:text-[#E31837] transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#E31837]">{item.icon}</span>
+                        {item.name}
+                      </div>
+                      {item.type && (
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setActiveDropdown(activeDropdown === item.type ? null : item.type);
+                          }}
+                          className="p-1"
+                        >
+                          <ChevronDown size={18} className={`transition-transform ${activeDropdown === item.type ? 'rotate-180' : ''}`} />
+                        </button>
+                      )}
+                    </a>
+                    
+                    {item.type && activeDropdown === item.type && (
+                      <div className="pl-12 pr-4 py-2 space-y-2 bg-gray-50 rounded-xl">
+                        {resources.filter(r => r.type === item.type).length === 0 ? (
+                          <p className="text-xs text-gray-400 italic py-1">No {item.name.toLowerCase()} yet</p>
+                        ) : (
+                          resources.filter(r => r.type === item.type).map((res) => (
+                            <a
+                              key={res.id}
+                              href={res.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block py-2 text-sm text-gray-600 hover:text-[#E31837] transition-colors truncate"
+                            >
+                              • {res.title}
+                            </a>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
-      {/* Navigation Bar */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-start md:justify-center gap-1 md:gap-8">
+      {/* Desktop Navigation Bar */}
+      <nav className="hidden lg:block bg-white border-b border-gray-200 sticky top-[72px] md:top-[88px] z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-8">
           {[
-            { name: 'Dashboard', href: '#dashboard' },
-            { name: 'Documents', href: '#documents', type: 'document' },
-            { name: 'Forms', href: '#forms', type: 'form' },
-            ...(isAdmin ? [{ name: 'Admin Panel', onClick: () => setShowAdminPanel(!showAdminPanel) }] : [])
+            { name: 'Dashboard', href: '#dashboard', icon: <LayoutDashboard size={18} /> },
+            { name: 'Documents', href: '#documents', type: 'document', icon: <FileText size={18} /> },
+            { name: 'Forms', href: '#forms', type: 'form', icon: <ClipboardList size={18} /> },
+            { name: 'Videos', href: '#videos', type: 'video', icon: <Youtube size={18} /> },
+            ...(isAdmin ? [{ name: 'Admin Panel', onClick: () => setShowAdminPanel(!showAdminPanel), icon: <ShieldCheck size={18} /> }] : [])
           ].map((item) => (
             <div 
               key={item.name} 
@@ -380,12 +462,13 @@ export default function App() {
                     item.onClick();
                   }
                 }}
-                className={`px-4 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-1 ${
+                className={`px-4 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
                   (item.name === 'Admin Panel' && showAdminPanel)
                     ? 'text-[#E31837] border-[#E31837]'
                     : 'text-gray-700 border-transparent hover:text-[#E31837] hover:border-[#E31837]'
                 }`}
               >
+                <span className="shrink-0">{item.icon}</span>
                 {item.name}
                 {item.type && <ChevronDown size={14} className={`transition-transform ${activeDropdown === item.type ? 'rotate-180' : ''}`} />}
               </a>
@@ -411,7 +494,9 @@ export default function App() {
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#E31837] transition-colors border-b border-gray-50 last:border-0"
                           >
-                            {item.type === 'document' ? <FileText size={14} className="shrink-0 text-blue-500" /> : <ClipboardList size={14} className="shrink-0 text-green-500" />}
+                            {item.type === 'document' ? <FileText size={14} className="shrink-0 text-blue-500" /> : 
+                             item.type === 'form' ? <ClipboardList size={14} className="shrink-0 text-green-500" /> :
+                             <Youtube size={14} className="shrink-0 text-red-500" />}
                             <span className="truncate">{res.title}</span>
                           </a>
                         ))
@@ -436,11 +521,11 @@ export default function App() {
         
         {/* Admin Panel */}
         {isAdmin && showAdminPanel && (
-          <section className="max-w-4xl mx-auto mb-12 bg-white rounded-2xl shadow-lg border-2 border-[#FFC220] p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <section className="max-w-4xl mx-auto mb-12 bg-white rounded-2xl shadow-lg border-2 border-[#FFC220] p-4 md:p-8">
+            <div className="flex items-center justify-between mb-6 md:mb-8">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <ShieldCheck className="text-[#E31837]" />
-                Admin Management Panel
+                Admin Panel
               </h2>
               <button 
                 onClick={() => setShowAdminPanel(false)}
@@ -454,26 +539,9 @@ export default function App() {
               {/* Add New Resource Form */}
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Add New Resource</h3>
-                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-4">
-                  <button 
-                    type="button"
-                    onClick={() => setUploadMethod('link')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${uploadMethod === 'link' ? 'bg-white text-[#E31837] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                  >
-                    Link / URL
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setUploadMethod('file')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${uploadMethod === 'file' ? 'bg-white text-[#E31837] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                  >
-                    Direct File Upload
-                  </button>
-                </div>
                 <form 
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (uploading) return;
                     if (!user) {
                       showNotify('You must be logged in to add resources', 'error');
                       return;
@@ -482,99 +550,28 @@ export default function App() {
                     const formData = new FormData(e.currentTarget);
                     const title = formData.get('title') as string;
                     const type = formData.get('type') as string;
-                    let url = formData.get('url') as string;
-                    const file = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
+                    const url = formData.get('url') as string;
 
-                    if (!title || !type) {
-                      showNotify('Please fill in all required fields', 'error');
+                    if (!title || !type || !url) {
+                      showNotify('Please fill in all fields', 'error');
                       return;
                     }
 
                     try {
-                      setUploading(true);
-                      setUploadProgress(0);
-                      
-                      if (uploadMethod === 'file' && file) {
-                        const allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv'];
-                        const fileExt = file.name.split('.').pop()?.toLowerCase();
-                        
-                        if (!fileExt || !allowedExts.includes(fileExt)) {
-                          showNotify('Only PDF, Word, Excel, and CSV files are allowed', 'error');
-                          setUploading(false);
-                          return;
-                        }
-
-                        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                          showNotify('File size exceeds 10MB limit', 'error');
-                          setUploading(false);
-                          return;
-                        }
-
-                        const storageRef = ref(storage, `resources/${Date.now()}_${file.name}`);
-                        const task = uploadBytesResumable(storageRef, file);
-                        setCurrentUploadTask(task);
-
-                        url = await new Promise((resolve, reject) => {
-                          task.on('state_changed', 
-                            (snapshot) => {
-                              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                              setUploadProgress(progress);
-                            }, 
-                            (error) => {
-                              console.error("Upload error:", error);
-                              reject(error);
-                            }, 
-                            async () => {
-                              const downloadURL = await getDownloadURL(task.snapshot.ref);
-                              resolve(downloadURL);
-                            }
-                          );
-                        });
-                      }
-
-                      if (!url) {
-                        showNotify('Please provide a URL or select a file', 'error');
-                        setUploading(false);
-                        return;
-                      }
-
-                      try {
-                        await addDoc(collection(db, 'resources'), {
-                          title,
-                          url,
-                          type,
-                          createdAt: Timestamp.now(),
-                          createdBy: user?.uid,
-                          method: uploadMethod
-                        });
-                      } catch (dbError: any) {
-                        console.error("Firestore error:", dbError);
-                        throw new Error(`Database Error: ${dbError.message || 'Failed to save resource info'}`);
-                      }
+                      await addDoc(collection(db, 'resources'), {
+                        title,
+                        url,
+                        type,
+                        createdAt: Timestamp.now(),
+                        createdBy: user?.uid,
+                        method: 'link'
+                      });
                       
                       showNotify('Resource added successfully');
                       (e.target as HTMLFormElement).reset();
-                      setUploadProgress(0);
                     } catch (error: any) {
                       console.error("Error adding resource:", error);
-                      if (error.code === 'storage/canceled') {
-                        showNotify('Upload canceled', 'error');
-                        return;
-                      }
-                      let errorMsg = 'Failed to upload resource';
-                      if (error.code?.startsWith('storage/')) {
-                        if (error.code === 'storage/unauthorized') {
-                          errorMsg = 'Storage Permission Denied. Please check Firebase Storage rules.';
-                        } else {
-                          errorMsg = `Storage Error: ${error.message}`;
-                        }
-                      } else if (error.message) {
-                        errorMsg = error.message;
-                      }
-                      showNotify(errorMsg, 'error');
-                    } finally {
-                      setUploading(false);
-                      setCurrentUploadTask(null);
+                      showNotify(`Failed to add resource: ${error.message}`, 'error');
                     }
                   }}
                   className="space-y-4"
@@ -584,82 +581,27 @@ export default function App() {
                     <input name="title" type="text" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="e.g. BD Manual 2024" />
                   </div>
                   
-                  {uploadMethod === 'link' ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Resource URL (Google Drive/Link)</label>
-                      <input name="url" type="url" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="https://drive.google.com/..." />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Select File (PDF, DOC, Excel, CSV)</label>
-                      <div className="relative group">
-                        <input 
-                          name="file" 
-                          type="file" 
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv" 
-                          required 
-                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#FFF9E6] file:text-[#E31837] hover:file:bg-[#FFC220]/20 cursor-pointer" 
-                        />
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-1 italic">Max file size: 10MB recommended</p>
-                      
-                      {uploading && uploadMethod === 'file' && (
-                        <div className="mt-3">
-                          <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
-                            <span>Uploading File...</span>
-                            <span>{Math.round(uploadProgress)}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                            <motion.div 
-                              className="bg-[#E31837] h-full"
-                              initial={{ width: 0 }}
-                              animate={{ width: `${uploadProgress}%` }}
-                              transition={{ duration: 0.3 }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resource URL (Google Drive/Youtube/Link)</label>
+                    <input name="url" type="url" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="https://..." />
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                     <select name="type" className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none">
                       <option value="document">Document</option>
                       <option value="form">Form</option>
+                      <option value="video">Youtube/Video Links</option>
                     </select>
                   </div>
                   
-                  {uploading && uploadMethod === 'file' ? (
-                    <button 
-                      type="button" 
-                      onClick={() => currentUploadTask?.cancel()}
-                      className="w-full py-3 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 transition-all flex items-center justify-center gap-2 shadow-md"
-                    >
-                      <X size={20} />
-                      Cancel Upload
-                    </button>
-                  ) : (
-                    <button 
-                      type="submit" 
-                      disabled={uploading}
-                      className={`w-full py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 shadow-md ${
-                        uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#E31837] text-white hover:bg-[#c4152f]'
-                      }`}
-                    >
-                      {uploading ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <Plus size={20} />
-                          {uploadMethod === 'file' ? 'Upload File' : 'Add Resource Link'}
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button 
+                    type="submit" 
+                    className="w-full py-3 bg-[#E31837] text-white rounded-lg font-bold hover:bg-[#c4152f] transition-all flex items-center justify-center gap-2 shadow-md"
+                  >
+                    <Plus size={20} />
+                    Add Resource
+                  </button>
                 </form>
               </div>
 
@@ -1037,8 +979,8 @@ export default function App() {
 
             <div className="max-w-4xl mx-auto space-y-12">
               {/* Documents Section */}
-              <section id="documents" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <section id="documents" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-4 md:p-8">
+                <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                   <FileText className="text-[#E31837]" />
                   Documents & Resources
                 </h3>
@@ -1081,8 +1023,8 @@ export default function App() {
               </section>
 
               {/* Forms Section */}
-              <section id="forms" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <section id="forms" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-4 md:p-8">
+                <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                   <ClipboardList className="text-[#E31837]" />
                   Forms & Applications
                 </h3>
@@ -1115,6 +1057,58 @@ export default function App() {
                             title="Delete Form"
                           >
                             <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              {/* Videos Section */}
+              <section id="videos" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-4 md:p-8">
+                <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Youtube className="text-[#E31837]" />
+                  Youtube & Video Links
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {resources.filter(r => r.type === 'video').length === 0 ? (
+                    <div className="col-span-full text-center py-8 text-gray-500 italic">
+                      No video links available at the moment.
+                    </div>
+                  ) : (
+                    resources.filter(r => r.type === 'video').map((video, i) => (
+                      <div key={i} className="relative group">
+                        <a 
+                          href={video.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 hover:border-[#E31837] hover:bg-red-50/30 transition-all cursor-pointer group"
+                        >
+                          <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
+                            <Video className="text-gray-300" size={48} />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+                              <div className="w-12 h-12 bg-[#E31837] rounded-full flex items-center justify-center text-white shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                                <Youtube size={24} />
+                              </div>
+                            </div>
+                          </div>
+                          <span className="font-bold text-gray-700 group-hover:text-[#E31837] line-clamp-2">{video.title}</span>
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                            <ExternalLink size={12} />
+                            Watch on Youtube
+                          </div>
+                        </a>
+                        {isAdmin && (
+                          <button 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setResourceToDelete({ id: video.id, title: video.title });
+                            }}
+                            className="absolute right-4 top-4 p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 rounded-lg shadow-sm transition-colors opacity-0 group-hover:opacity-100 z-10"
+                            title="Delete Video"
+                          >
+                            <Trash2 size={18} />
                           </button>
                         )}
                       </div>

@@ -24,8 +24,9 @@ import {
   Trash2,
   Plus
 } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, storage } from './firebase';
 import { doc, setDoc, getDoc, collection, onSnapshot, addDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL, UploadTask } from 'firebase/storage';
 import { db } from './firebase';
 
 enum OperationType {
@@ -194,6 +195,10 @@ export default function App() {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [resourceToDelete, setResourceToDelete] = useState<{ id: string; title: string } | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMethod, setUploadMethod] = useState<'link' | 'file'>('link');
+  const [currentUploadTask, setCurrentUploadTask] = useState<UploadTask | null>(null);
 
   const showNotify = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -449,9 +454,26 @@ export default function App() {
               {/* Add New Resource Form */}
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Add New Resource</h3>
+                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-4">
+                  <button 
+                    type="button"
+                    onClick={() => setUploadMethod('link')}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${uploadMethod === 'link' ? 'bg-white text-[#E31837] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Link / URL
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setUploadMethod('file')}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${uploadMethod === 'file' ? 'bg-white text-[#E31837] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Direct File Upload
+                  </button>
+                </div>
                 <form 
                   onSubmit={async (e) => {
                     e.preventDefault();
+                    if (uploading) return;
                     if (!user) {
                       showNotify('You must be logged in to add resources', 'error');
                       return;
@@ -459,28 +481,100 @@ export default function App() {
 
                     const formData = new FormData(e.currentTarget);
                     const title = formData.get('title') as string;
-                    const url = formData.get('url') as string;
                     const type = formData.get('type') as string;
+                    let url = formData.get('url') as string;
+                    const file = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
 
-                    if (!title || !url || !type) {
-                      showNotify('Please fill in all fields', 'error');
+                    if (!title || !type) {
+                      showNotify('Please fill in all required fields', 'error');
                       return;
                     }
 
                     try {
-                      await addDoc(collection(db, 'resources'), {
-                        title,
-                        url,
-                        type,
-                        createdAt: Timestamp.now(),
-                        createdBy: user?.uid
-                      });
+                      setUploading(true);
+                      setUploadProgress(0);
+                      
+                      if (uploadMethod === 'file' && file) {
+                        const allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv'];
+                        const fileExt = file.name.split('.').pop()?.toLowerCase();
+                        
+                        if (!fileExt || !allowedExts.includes(fileExt)) {
+                          showNotify('Only PDF, Word, Excel, and CSV files are allowed', 'error');
+                          setUploading(false);
+                          return;
+                        }
+
+                        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                          showNotify('File size exceeds 10MB limit', 'error');
+                          setUploading(false);
+                          return;
+                        }
+
+                        const storageRef = ref(storage, `resources/${Date.now()}_${file.name}`);
+                        const task = uploadBytesResumable(storageRef, file);
+                        setCurrentUploadTask(task);
+
+                        url = await new Promise((resolve, reject) => {
+                          task.on('state_changed', 
+                            (snapshot) => {
+                              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                              setUploadProgress(progress);
+                            }, 
+                            (error) => {
+                              console.error("Upload error:", error);
+                              reject(error);
+                            }, 
+                            async () => {
+                              const downloadURL = await getDownloadURL(task.snapshot.ref);
+                              resolve(downloadURL);
+                            }
+                          );
+                        });
+                      }
+
+                      if (!url) {
+                        showNotify('Please provide a URL or select a file', 'error');
+                        setUploading(false);
+                        return;
+                      }
+
+                      try {
+                        await addDoc(collection(db, 'resources'), {
+                          title,
+                          url,
+                          type,
+                          createdAt: Timestamp.now(),
+                          createdBy: user?.uid,
+                          method: uploadMethod
+                        });
+                      } catch (dbError: any) {
+                        console.error("Firestore error:", dbError);
+                        throw new Error(`Database Error: ${dbError.message || 'Failed to save resource info'}`);
+                      }
                       
                       showNotify('Resource added successfully');
                       (e.target as HTMLFormElement).reset();
+                      setUploadProgress(0);
                     } catch (error: any) {
                       console.error("Error adding resource:", error);
-                      showNotify(`Failed to add resource: ${error.message}`, 'error');
+                      if (error.code === 'storage/canceled') {
+                        showNotify('Upload canceled', 'error');
+                        return;
+                      }
+                      let errorMsg = 'Failed to upload resource';
+                      if (error.code?.startsWith('storage/')) {
+                        if (error.code === 'storage/unauthorized') {
+                          errorMsg = 'Storage Permission Denied. Please check Firebase Storage rules.';
+                        } else {
+                          errorMsg = `Storage Error: ${error.message}`;
+                        }
+                      } else if (error.message) {
+                        errorMsg = error.message;
+                      }
+                      showNotify(errorMsg, 'error');
+                    } finally {
+                      setUploading(false);
+                      setCurrentUploadTask(null);
                     }
                   }}
                   className="space-y-4"
@@ -490,10 +584,43 @@ export default function App() {
                     <input name="title" type="text" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="e.g. BD Manual 2024" />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Resource URL (Google Drive/Link)</label>
-                    <input name="url" type="url" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="https://drive.google.com/..." />
-                  </div>
+                  {uploadMethod === 'link' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Resource URL (Google Drive/Link)</label>
+                      <input name="url" type="url" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="https://drive.google.com/..." />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Select File (PDF, DOC, Excel, CSV)</label>
+                      <div className="relative group">
+                        <input 
+                          name="file" 
+                          type="file" 
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv" 
+                          required 
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#FFF9E6] file:text-[#E31837] hover:file:bg-[#FFC220]/20 cursor-pointer" 
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1 italic">Max file size: 10MB recommended</p>
+                      
+                      {uploading && uploadMethod === 'file' && (
+                        <div className="mt-3">
+                          <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
+                            <span>Uploading File...</span>
+                            <span>{Math.round(uploadProgress)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                            <motion.div 
+                              className="bg-[#E31837] h-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${uploadProgress}%` }}
+                              transition={{ duration: 0.3 }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
@@ -503,13 +630,36 @@ export default function App() {
                     </select>
                   </div>
                   
-                  <button 
-                    type="submit" 
-                    className="w-full py-3 bg-[#E31837] text-white rounded-lg font-bold hover:bg-[#c4152f] transition-all flex items-center justify-center gap-2 shadow-md"
-                  >
-                    <Plus size={20} />
-                    Add Resource
-                  </button>
+                  {uploading && uploadMethod === 'file' ? (
+                    <button 
+                      type="button" 
+                      onClick={() => currentUploadTask?.cancel()}
+                      className="w-full py-3 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 transition-all flex items-center justify-center gap-2 shadow-md"
+                    >
+                      <X size={20} />
+                      Cancel Upload
+                    </button>
+                  ) : (
+                    <button 
+                      type="submit" 
+                      disabled={uploading}
+                      className={`w-full py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 shadow-md ${
+                        uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#E31837] text-white hover:bg-[#c4152f]'
+                      }`}
+                    >
+                      {uploading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={20} />
+                          {uploadMethod === 'file' ? 'Upload File' : 'Add Resource Link'}
+                        </>
+                      )}
+                    </button>
+                  )}
                 </form>
               </div>
 

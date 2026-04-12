@@ -22,6 +22,7 @@
         "title": { "type": "string", "description": "Title of the resource." },
         "url": { "type": "string", "description": "URL to the resource (e.g. Google Drive link)." },
         "type": { "type": "string", "enum": ["document", "form"], "description": "Type of resource." },
+        "method": { "type": "string", "enum": ["link", "file"], "description": "Upload method (direct file or URL link)." },
         "createdAt": { "type": "string", "format": "date-time" },
         "createdBy": { "type": "string" }
       },

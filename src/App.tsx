@@ -24,9 +24,8 @@ import {
   Trash2,
   Plus
 } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, storage } from './firebase';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
 import { doc, setDoc, getDoc, collection, onSnapshot, addDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db } from './firebase';
 
 enum OperationType {
@@ -195,9 +194,6 @@ export default function App() {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [resourceToDelete, setResourceToDelete] = useState<{ id: string; title: string } | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadMethod, setUploadMethod] = useState<'link' | 'file'>('link');
 
   const showNotify = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -453,72 +449,38 @@ export default function App() {
               {/* Add New Resource Form */}
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Add New Resource</h3>
-                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-4">
-                  <button 
-                    onClick={() => setUploadMethod('link')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${uploadMethod === 'link' ? 'bg-white text-[#E31837] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                  >
-                    Link / URL
-                  </button>
-                  <button 
-                    onClick={() => setUploadMethod('file')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${uploadMethod === 'file' ? 'bg-white text-[#E31837] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                  >
-                    Direct PDF Upload
-                  </button>
-                </div>
                 <form 
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (uploading) return;
+                    if (!user) {
+                      showNotify('You must be logged in to add resources', 'error');
+                      return;
+                    }
 
                     const formData = new FormData(e.currentTarget);
                     const title = formData.get('title') as string;
+                    const url = formData.get('url') as string;
                     const type = formData.get('type') as string;
-                    let url = formData.get('url') as string;
-                    const file = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
 
-                    if (!title || !type) {
-                      showNotify('Please fill in all required fields', 'error');
+                    if (!title || !url || !type) {
+                      showNotify('Please fill in all fields', 'error');
                       return;
                     }
 
                     try {
-                      setUploading(true);
-                      
-                      if (uploadMethod === 'file' && file) {
-                        if (file.type !== 'application/pdf') {
-                          showNotify('Only PDF files are allowed', 'error');
-                          setUploading(false);
-                          return;
-                        }
-                        const storageRef = ref(storage, `resources/${Date.now()}_${file.name}`);
-                        const snapshot = await uploadBytes(storageRef, file);
-                        url = await getDownloadURL(snapshot.ref);
-                      }
-
-                      if (!url) {
-                        showNotify('Please provide a URL or select a file', 'error');
-                        setUploading(false);
-                        return;
-                      }
-
                       await addDoc(collection(db, 'resources'), {
                         title,
                         url,
                         type,
                         createdAt: Timestamp.now(),
-                        createdBy: user?.uid,
-                        method: uploadMethod
+                        createdBy: user?.uid
                       });
                       
-                      showNotify('Resource uploaded successfully');
+                      showNotify('Resource added successfully');
                       (e.target as HTMLFormElement).reset();
-                    } catch (error) {
+                    } catch (error: any) {
                       console.error("Error adding resource:", error);
-                      showNotify('Failed to upload resource', 'error');
-                    } finally {
-                      setUploading(false);
+                      showNotify(`Failed to add resource: ${error.message}`, 'error');
                     }
                   }}
                   className="space-y-4"
@@ -528,26 +490,10 @@ export default function App() {
                     <input name="title" type="text" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="e.g. BD Manual 2024" />
                   </div>
                   
-                  {uploadMethod === 'link' ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Resource URL (Google Drive/Link)</label>
-                      <input name="url" type="url" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="https://drive.google.com/..." />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Select PDF File</label>
-                      <div className="relative group">
-                        <input 
-                          name="file" 
-                          type="file" 
-                          accept=".pdf" 
-                          required 
-                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#FFF9E6] file:text-[#E31837] hover:file:bg-[#FFC220]/20 cursor-pointer" 
-                        />
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-1 italic">Max file size: 5MB recommended</p>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resource URL (Google Drive/Link)</label>
+                    <input name="url" type="url" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="https://drive.google.com/..." />
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
@@ -559,22 +505,10 @@ export default function App() {
                   
                   <button 
                     type="submit" 
-                    disabled={uploading}
-                    className={`w-full py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 shadow-md ${
-                      uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#E31837] text-white hover:bg-[#c4152f]'
-                    }`}
+                    className="w-full py-3 bg-[#E31837] text-white rounded-lg font-bold hover:bg-[#c4152f] transition-all flex items-center justify-center gap-2 shadow-md"
                   >
-                    {uploading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={20} />
-                        {uploadMethod === 'file' ? 'Upload PDF File' : 'Add Resource Link'}
-                      </>
-                    )}
+                    <Plus size={20} />
+                    Add Resource
                   </button>
                 </form>
               </div>

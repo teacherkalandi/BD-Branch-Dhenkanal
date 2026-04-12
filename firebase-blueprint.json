@@ -12,12 +12,30 @@
         "role": { "type": "string", "enum": ["admin", "user"], "description": "User's role in the system." }
       },
       "required": ["uid", "email"]
+    },
+    "resources": {
+      "title": "Resource",
+      "description": "Represents a document or form resource.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "description": "Title of the resource." },
+        "url": { "type": "string", "description": "URL to the resource (e.g. Google Drive link)." },
+        "type": { "type": "string", "enum": ["document", "form"], "description": "Type of resource." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "url", "type"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "users",
       "description": "User profile documents."
+    },
+    "/resources/{resourceId}": {
+      "schema": "resources",
+      "description": "Documents and forms resources."
     }
   }
 }

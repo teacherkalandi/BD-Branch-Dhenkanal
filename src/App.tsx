@@ -19,11 +19,64 @@ import {
   LogIn,
   LogOut,
   User as UserIcon,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, onSnapshot, addDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  // We don't want to crash the app, but we want to log it for the agent
+}
 
 const slides = [
   {
@@ -134,29 +187,68 @@ export default function App() {
   const [showBPRModal, setShowBPRModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resources, setResources] = useState<any[]>([]);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [resourceToDelete, setResourceToDelete] = useState<{ id: string; title: string } | null>(null);
+
+  const showNotify = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        // Check if user exists in Firestore, if not create profile
         const userRef = doc(db, 'users', currentUser.uid);
         const userSnap = await getDoc(userRef);
         
         if (!userSnap.exists()) {
-          await setDoc(userRef, {
+          const newUser = {
             uid: currentUser.uid,
             email: currentUser.email,
             displayName: currentUser.displayName,
             photoURL: currentUser.photoURL,
-            role: 'user' // Default role
-          });
+            role: currentUser.email === 'teacherkalandi@gmail.com' ? 'admin' : 'user'
+          };
+          await setDoc(userRef, newUser);
+          setIsAdmin(newUser.role === 'admin');
+        } else {
+          setIsAdmin(userSnap.data()?.role === 'admin' || currentUser.email === 'teacherkalandi@gmail.com');
         }
+      } else {
+        setIsAdmin(false);
       }
       setUser(currentUser);
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setResources(data);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  const confirmDelete = async () => {
+    if (!resourceToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'resources', resourceToDelete.id));
+      showNotify('Resource deleted successfully');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `resources/${resourceToDelete.id}`);
+      showNotify('Failed to delete resource. Check permissions.', 'error');
+    } finally {
+      setResourceToDelete(null);
+    }
+  };
 
   const handleLogin = async () => {
     try {
@@ -206,7 +298,17 @@ export default function App() {
           
           <div className="flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-3 bg-white/10 p-1.5 pr-4 rounded-full border border-white/20">
+              <div className="flex items-center gap-4">
+                {isAdmin && (
+                  <button 
+                    onClick={() => setShowAdminPanel(!showAdminPanel)}
+                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#FFC220] text-gray-900 rounded-lg font-semibold hover:bg-yellow-400 transition-colors text-sm"
+                  >
+                    <ShieldCheck size={16} />
+                    {showAdminPanel ? 'Exit Admin' : 'Admin Panel'}
+                  </button>
+                )}
+                <div className="flex items-center gap-3 bg-white/10 p-1.5 pr-4 rounded-full border border-white/20">
                 <img 
                   src={user.photoURL || ''} 
                   alt={user.displayName || ''} 
@@ -225,9 +327,10 @@ export default function App() {
                   <LogOut size={18} />
                 </button>
               </div>
-            ) : (
-              <button 
-                onClick={handleLogin}
+            </div>
+          ) : (
+            <button 
+              onClick={handleLogin}
                 className="flex items-center gap-2 bg-[#FFC220] text-gray-900 px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#e6af1d] transition-colors shadow-sm"
               >
                 <LogIn size={18} />
@@ -253,12 +356,23 @@ export default function App() {
           {[
             { name: 'Dashboard', href: '#dashboard' },
             { name: 'Documents', href: '#documents' },
-            { name: 'Forms', href: '#forms' }
+            { name: 'Forms', href: '#forms' },
+            ...(isAdmin ? [{ name: 'Admin Panel', onClick: () => setShowAdminPanel(!showAdminPanel) }] : [])
           ].map((item) => (
             <a 
               key={item.name}
-              href={item.href} 
-              className="px-4 py-3 text-sm font-bold text-gray-700 hover:text-[#E31837] border-b-2 border-transparent hover:border-[#E31837] transition-all whitespace-nowrap"
+              href={item.href || '#'} 
+              onClick={(e) => {
+                if (item.onClick) {
+                  e.preventDefault();
+                  item.onClick();
+                }
+              }}
+              className={`px-4 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                (item.name === 'Admin Panel' && showAdminPanel)
+                  ? 'text-[#E31837] border-[#E31837]'
+                  : 'text-gray-700 border-transparent hover:text-[#E31837] hover:border-[#E31837]'
+              }`}
             >
               {item.name}
             </a>
@@ -270,6 +384,102 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
         
+        {/* Admin Panel */}
+        {isAdmin && showAdminPanel && (
+          <section className="max-w-4xl mx-auto mb-12 bg-white rounded-2xl shadow-lg border-2 border-[#FFC220] p-8">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <ShieldCheck className="text-[#E31837]" />
+                Admin Management Panel
+              </h2>
+              <button 
+                onClick={() => setShowAdminPanel(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Add New Resource Form */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Add New Resource</h3>
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const title = formData.get('title') as string;
+                    const url = formData.get('url') as string;
+                    const type = formData.get('type') as string;
+
+                    if (title && url && type) {
+                      try {
+                        await addDoc(collection(db, 'resources'), {
+                          title,
+                          url,
+                          type,
+                          createdAt: Timestamp.now(),
+                          createdBy: user?.uid
+                        });
+                        (e.target as HTMLFormElement).reset();
+                      } catch (error) {
+                        console.error("Error adding resource:", error);
+                      }
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <input name="title" type="text" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="e.g. BD Manual 2024" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resource URL (Google Drive/Link)</label>
+                    <input name="url" type="url" required className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none" placeholder="https://drive.google.com/..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <select name="type" className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-transparent outline-none">
+                      <option value="document">Document</option>
+                      <option value="form">Form</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="w-full py-3 bg-[#E31837] text-white rounded-lg font-bold hover:bg-[#c4152f] transition-colors flex items-center justify-center gap-2">
+                    <Plus size={20} />
+                    Upload Resource
+                  </button>
+                </form>
+              </div>
+
+              {/* Manage Existing Resources */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Manage Resources</h3>
+                <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2">
+                  {resources.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8 italic">No resources uploaded yet.</p>
+                  ) : (
+                    resources.map((res) => (
+                      <div key={res.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {res.type === 'document' ? <FileText size={18} className="text-blue-500 flex-shrink-0" /> : <ClipboardList size={18} className="text-green-500 flex-shrink-0" />}
+                          <span className="text-sm font-medium text-gray-700 truncate">{res.title}</span>
+                        </div>
+                        <button 
+                          onClick={() => setResourceToDelete({ id: res.id, title: res.title })}
+                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Delete Resource"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {!user ? (
           <section className="bg-white rounded-2xl p-12 shadow-sm border border-gray-300 flex flex-col items-center text-center gap-6">
             <div className="w-20 h-20 bg-[#FFF9E6] rounded-full flex items-center justify-center text-[#E31837]">
@@ -621,48 +831,83 @@ export default function App() {
                   Documents & Resources
                 </h3>
                 <div className="space-y-4">
-                  {[
-                    "Business Development Manual 2024",
-                    "BNPL Agreement Template",
-                    "Tariff Structure & Discount Matrix",
-                    "Standard Operating Procedures (SOP)"
-                  ].map((doc, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <FileText className="text-gray-400" size={20} />
-                        <span className="font-medium text-gray-700">{doc}</span>
-                      </div>
-                      <button className="p-2 text-[#E31837] hover:bg-[#FFF9E6] rounded-md transition-colors" title="Download">
-                        <Download size={18} />
-                      </button>
+                  {resources.filter(r => r.type === 'document').length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 italic">
+                      No documents available at the moment.
                     </div>
-                  ))}
+                  ) : (
+                    resources.filter(r => r.type === 'document').map((doc, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <FileText className="text-gray-400" size={20} />
+                          <span className="font-medium text-gray-700">{doc.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isAdmin && (
+                            <button 
+                              onClick={() => setResourceToDelete({ id: doc.id, title: doc.title })}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="Delete Document"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
+                          <a 
+                            href={doc.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-2 text-[#E31837] hover:bg-[#FFF9E6] rounded-md transition-colors" 
+                            title="Download"
+                          >
+                            <Download size={18} />
+                          </a>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <button className="mt-6 w-full py-3 text-sm font-semibold text-[#E31837] border border-[#E31837] rounded-lg hover:bg-[#E31837] hover:text-white transition-colors">
-                  View All Documents
-                </button>
               </section>
 
-              {/* Forms Section Placeholder */}
+              {/* Forms Section */}
               <section id="forms" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                   <ClipboardList className="text-[#E31837]" />
                   Forms & Applications
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    "New BNPL Account Form",
-                    "Advance Customer Registration",
-                    "Bulk Booking Request",
-                    "Discount Approval Form"
-                  ].map((form, i) => (
-                    <div key={i} className="p-4 rounded-xl border border-gray-200 hover:border-[#E31837] transition-all cursor-pointer group">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-gray-700 group-hover:text-[#E31837]">{form}</span>
-                        <Download size={16} className="text-gray-400 group-hover:text-[#E31837]" />
-                      </div>
+                  {resources.filter(r => r.type === 'form').length === 0 ? (
+                    <div className="col-span-full text-center py-8 text-gray-500 italic">
+                      No forms available at the moment.
                     </div>
-                  ))}
+                  ) : (
+                    resources.filter(r => r.type === 'form').map((form, i) => (
+                      <div key={i} className="relative group">
+                        <a 
+                          href={form.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-4 rounded-xl border border-gray-200 hover:border-[#E31837] transition-all cursor-pointer group block pr-12"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700 group-hover:text-[#E31837]">{form.title}</span>
+                            <Download size={16} className="text-gray-400 group-hover:text-[#E31837]" />
+                          </div>
+                        </a>
+                        {isAdmin && (
+                          <button 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setResourceToDelete({ id: form.id, title: form.title });
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                            title="Delete Form"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </section>
             </div>
@@ -706,6 +951,67 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={`fixed bottom-8 right-8 z-[100] px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 border-l-4 ${
+              notification.type === 'success' 
+                ? 'bg-white text-gray-900 border-green-500' 
+                : 'bg-white text-gray-900 border-red-500'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              notification.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+            }`}>
+              {notification.type === 'success' ? <ShieldCheck size={18} /> : <X size={18} />}
+            </div>
+            <p className="font-bold text-sm">{notification.message}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {resourceToDelete && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl border-t-4 border-red-500 w-full max-w-md overflow-hidden"
+            >
+              <div className="p-6">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-4">
+                  <Trash2 size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Deletion</h3>
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to delete <strong>"{resourceToDelete.title}"</strong>? This action cannot be undone.
+                </p>
+                <div className="flex items-center justify-end gap-3">
+                  <button 
+                    onClick={() => setResourceToDelete(null)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg font-medium transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

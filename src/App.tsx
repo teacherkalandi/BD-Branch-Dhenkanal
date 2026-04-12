@@ -20,19 +20,24 @@ import {
 
 const slides = [
   {
-    image: "https://picsum.photos/seed/postal1/1920/600",
-    title: "Connecting India, Empowering Business",
-    description: "The Business Development Branch is your partner in logistics and growth."
+    image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1920&h=600",
+    title: "Logistics Post",
+    description: "Connecting India, Empowering Business with the world's largest postal network."
   },
   {
-    image: "https://picsum.photos/seed/postal2/1920/600",
-    title: "Digital Solutions for Modern Logistics",
-    description: "Streamlined tracking, reporting, and customer management at your fingertips."
+    image: "https://images.unsplash.com/photo-1616401784845-180882ba9ba8?auto=format&fit=crop&q=80&w=1920&h=600",
+    title: "Speed Post",
+    description: "Guaranteed Next-Day Delivery for your urgent parcels and documents."
   },
   {
-    image: "https://picsum.photos/seed/postal3/1920/600",
-    title: "Trusted Reach, Nationwide Impact",
-    description: "Leveraging the world's largest postal network for your business success."
+    image: "https://images.unsplash.com/photo-1580136608079-72029d0de130?auto=format&fit=crop&q=80&w=1920&h=600",
+    title: "World of Stamps",
+    description: "Explore a whole new world of stamps from 1854 to today."
+  },
+  {
+    image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=1920&h=600",
+    title: "Digital India Post",
+    description: "Modernizing postal services for a digital and connected India."
   }
 ];
 
@@ -118,41 +123,58 @@ function HeroSlider() {
 
 export default function App() {
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showBPRModal, setShowBPRModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       {/* Header */}
-      <header className="bg-[#E31837] text-white shadow-md border-b-4 border-[#FFC220]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header className="bg-[#E31837] text-white shadow-md border-b-2 border-[#FFC220]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 md:gap-4">
             {/* Indian National Emblem */}
             <img 
               src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" 
               alt="Emblem of India" 
-              className="h-16 w-auto brightness-0 invert" 
+              className="h-12 md:h-16 w-auto brightness-0 invert" 
               referrerPolicy="no-referrer"
             />
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight">Business Development Branch</h1>
+            <h1 className="text-lg md:text-2xl font-bold tracking-tight leading-tight">
+              Business Development Branch
+              <span className="block text-[10px] md:text-xs font-normal opacity-80">Dhenkanal Postal Division</span>
+            </h1>
           </div>
           
-          <div className="flex items-center gap-4 md:gap-8">
-            <nav className="hidden lg:flex gap-6 font-medium text-sm">
-              <a href="#dashboard" className="hover:text-[#FFC220] transition-colors">Dashboard</a>
-              <a href="#documents" className="hover:text-[#FFC220] transition-colors">Documents</a>
-              <a href="#forms" className="hover:text-[#FFC220] transition-colors">Forms</a>
-            </nav>
-            {/* India Post Logo */}
-            <div className="bg-white p-1.5 rounded-md shadow-sm">
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/en/3/32/India_Post.svg" 
-                alt="India Post Logo" 
-                className="h-10 md:h-12 w-auto" 
-                referrerPolicy="no-referrer"
-              />
-            </div>
+          {/* India Post Logo */}
+          <div className="bg-white p-1 md:p-1.5 rounded-md shadow-sm shrink-0">
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/en/3/32/India_Post.svg" 
+              alt="India Post Logo" 
+              className="h-8 md:h-12 w-auto" 
+              referrerPolicy="no-referrer"
+            />
           </div>
         </div>
       </header>
+
+      {/* Navigation Bar */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm overflow-x-auto no-scrollbar">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-start md:justify-center gap-1 md:gap-8 min-w-max">
+          {[
+            { name: 'Dashboard', href: '#dashboard' },
+            { name: 'Documents', href: '#documents' },
+            { name: 'Forms', href: '#forms' }
+          ].map((item) => (
+            <a 
+              key={item.name}
+              href={item.href} 
+              className="px-4 py-3 text-sm font-bold text-gray-700 hover:text-[#E31837] border-b-2 border-transparent hover:border-[#E31837] transition-all whitespace-nowrap"
+            >
+              {item.name}
+            </a>
+          ))}
+        </div>
+      </nav>
 
       <HeroSlider />
 
@@ -289,18 +311,213 @@ export default function App() {
             </a>
 
             {/* Card 6: BD report */}
-            <a href="https://bdachievement-report.edgeone.app/" target="_blank" rel="noopener noreferrer" className="bg-rose-50 rounded-xl shadow-sm border-2 border-rose-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-rose-500">
+            <button 
+              onClick={() => setShowReportModal(true)}
+              className="bg-rose-50 text-left rounded-xl shadow-sm border-2 border-rose-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-rose-500 w-full"
+            >
               <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-rose-500 transition-colors">
                 <BarChart3 className="text-rose-600 group-hover:text-white transition-colors" size={24} />
               </div>
               <h4 className="text-lg font-bold text-gray-900 mb-2">BD Report</h4>
               <p className="text-gray-600 text-sm">Generate revenue reports, performance analytics, and MIS data.</p>
+            </button>
+
+            {/* Card 7: ePost */}
+            <a href="#" className="bg-cyan-50 rounded-xl shadow-sm border-2 border-cyan-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-cyan-500">
+              <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-cyan-500 transition-colors">
+                <Mail className="text-cyan-600 group-hover:text-white transition-colors" size={24} />
+              </div>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">ePost</h4>
+              <p className="text-gray-600 text-sm">Send and receive messages as soft copies through the internet.</p>
             </a>
+
+            {/* Card 8: ePayment */}
+            <a href="#" className="bg-violet-50 rounded-xl shadow-sm border-2 border-violet-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-violet-500">
+              <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-violet-500 transition-colors">
+                <CreditCard className="text-violet-600 group-hover:text-white transition-colors" size={24} />
+              </div>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">ePayment</h4>
+              <p className="text-gray-600 text-sm">Electronic payment solutions for bills, taxes, and other services.</p>
+            </a>
+
+            {/* Card 9: Direct Post */}
+            <a href="#" className="bg-orange-50 rounded-xl shadow-sm border-2 border-orange-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-orange-500">
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-500 transition-colors">
+                <Send className="text-orange-600 group-hover:text-white transition-colors" size={24} />
+              </div>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Direct Post</h4>
+              <p className="text-gray-600 text-sm">Un-addressed direct mail service for advertising and promotion.</p>
+            </a>
+
+            {/* Card 10: Mediapost */}
+            <a href="#" className="bg-fuchsia-50 rounded-xl shadow-sm border-2 border-fuchsia-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-fuchsia-500">
+              <div className="w-12 h-12 bg-fuchsia-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-fuchsia-500 transition-colors">
+                <LayoutDashboard className="text-fuchsia-600 group-hover:text-white transition-colors" size={24} />
+              </div>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Mediapost</h4>
+              <p className="text-gray-600 text-sm">Advertising opportunities on postal stationery and vehicles.</p>
+            </a>
+
+            {/* Card 11: Retail Post */}
+            <a href="#" className="bg-teal-50 rounded-xl shadow-sm border-2 border-teal-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-teal-500">
+              <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-500 transition-colors">
+                <ClipboardList className="text-teal-600 group-hover:text-white transition-colors" size={24} />
+              </div>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Retail Post</h4>
+              <p className="text-gray-600 text-sm">One-stop shop for various third-party services and products.</p>
+            </a>
+
+            {/* BD Report Modal */}
+            <AnimatePresence>
+              {showReportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    className="bg-white rounded-2xl shadow-2xl border-t-4 border-rose-500 w-full max-w-4xl overflow-hidden"
+                  >
+                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <BarChart3 className="text-rose-600" />
+                        BD Report Modules
+                      </h3>
+                      <button 
+                        onClick={() => setShowReportModal(false)}
+                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                      >
+                        <X size={24} />
+                      </button>
+                    </div>
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-white overflow-y-auto max-h-[70vh]">
+                      {/* Sub-card 1: Business Performance Report */}
+                      <button 
+                        onClick={() => setShowBPRModal(true)}
+                        className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4"
+                      >
+                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                          <BarChart3 className="text-rose-600 group-hover:text-white" size={32} />
+                        </div>
+                        <h4 className="font-bold text-gray-900">Business Performance Report</h4>
+                      </button>
+
+                      {/* Sub-card 2: Gangajal Report */}
+                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                          <FileText className="text-rose-600 group-hover:text-white" size={32} />
+                        </div>
+                        <h4 className="font-bold text-gray-900">Gangajal Report</h4>
+                      </a>
+
+                      {/* Sub-card 3: Flag Sale Report */}
+                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                          <FileText className="text-rose-600 group-hover:text-white" size={32} />
+                        </div>
+                        <h4 className="font-bold text-gray-900">Flag Sale Report</h4>
+                      </a>
+
+                      {/* Sub-card 4: Rakhi Cover Selling Report */}
+                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                          <FileText className="text-rose-600 group-hover:text-white" size={32} />
+                        </div>
+                        <h4 className="font-bold text-gray-900">Rakhi Cover Selling Report</h4>
+                      </a>
+
+                      {/* Sub-card 5: BD Achievements */}
+                      <a href="https://bdachievement-report.edgeone.app/" target="_blank" rel="noopener noreferrer" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                          <BarChart3 className="text-rose-600 group-hover:text-white" size={32} />
+                        </div>
+                        <h4 className="font-bold text-gray-900">BD Achievements</h4>
+                      </a>
+
+                      {/* Sub-card 6: BD Month Wise Report */}
+                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                          <ClipboardList className="text-rose-600 group-hover:text-white" size={32} />
+                        </div>
+                        <h4 className="font-bold text-gray-900">BD Month Wise Report</h4>
+                      </a>
+                    </div>
+                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                      <button 
+                        onClick={() => setShowReportModal(false)}
+                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Business Performance Report (BPR) Modal */}
+            <AnimatePresence>
+              {showBPRModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    className="bg-white rounded-2xl shadow-2xl border-t-4 border-rose-600 w-full max-w-lg overflow-hidden"
+                  >
+                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <BarChart3 className="text-rose-600" />
+                        Business Performance Reports
+                      </h3>
+                      <button 
+                        onClick={() => setShowBPRModal(false)}
+                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                      >
+                        <X size={24} />
+                      </button>
+                    </div>
+                    <div className="p-8 space-y-4 bg-white">
+                      <a 
+                        href="https://bdrevenuachievemen2025-26.edgeone.app/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
+                      >
+                        <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2025-26</span>
+                        <ExternalLink size={18} className="text-rose-600" />
+                      </a>
+                      <a 
+                        href="#" 
+                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
+                      >
+                        <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2026-27</span>
+                        <ExternalLink size={18} className="text-rose-600" />
+                      </a>
+                      <a 
+                        href="#" 
+                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
+                      >
+                        <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2027-28</span>
+                        <ExternalLink size={18} className="text-rose-600" />
+                      </a>
+                    </div>
+                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                      <button 
+                        onClick={() => setShowBPRModal(false)}
+                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+                      >
+                        Back to Reports
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
 
           </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="max-w-4xl mx-auto space-y-12">
           {/* Documents Section */}
           <section id="documents" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -330,40 +547,27 @@ export default function App() {
             </button>
           </section>
 
-          {/* Forms Section */}
+          {/* Forms Section Placeholder */}
           <section id="forms" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <Send className="text-[#E31837]" />
-              Quick Request Form
+              <ClipboardList className="text-[#E31837]" />
+              Forms & Applications
             </h3>
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Full Name</label>
-                  <input type="text" className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all" placeholder="Enter your name" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                "New BNPL Account Form",
+                "Advance Customer Registration",
+                "Bulk Booking Request",
+                "Discount Approval Form"
+              ].map((form, i) => (
+                <div key={i} className="p-4 rounded-xl border border-gray-200 hover:border-[#E31837] transition-all cursor-pointer group">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-700 group-hover:text-[#E31837]">{form}</span>
+                    <Download size={16} className="text-gray-400 group-hover:text-[#E31837]" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Employee ID / Office</label>
-                  <input type="text" className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all" placeholder="e.g. 123456" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Request Type</label>
-                <select className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all bg-white">
-                  <option>BNPL Account Creation</option>
-                  <option>Advance Customer Setup</option>
-                  <option>Report Generation Request</option>
-                  <option>Other Query</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Message</label>
-                <textarea rows={3} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all resize-none" placeholder="Describe your request..."></textarea>
-              </div>
-              <button type="submit" className="w-full py-3 bg-[#E31837] text-white font-semibold rounded-lg hover:bg-[#c41530] transition-colors shadow-sm">
-                Submit Request
-              </button>
-            </form>
+              ))}
+            </div>
           </section>
         </div>
       </main>

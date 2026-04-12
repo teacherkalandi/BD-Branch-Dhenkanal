@@ -15,8 +15,15 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  ExternalLink
+  ExternalLink,
+  LogIn,
+  LogOut,
+  User as UserIcon,
+  ShieldCheck
 } from 'lucide-react';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 const slides = [
   {
@@ -125,6 +132,58 @@ export default function App() {
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showBPRModal, setShowBPRModal] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        // Check if user exists in Firestore, if not create profile
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName,
+            photoURL: currentUser.photoURL,
+            role: 'user' // Default role
+          });
+        }
+      }
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#E31837] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-500 font-medium">Loading Portal...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -145,14 +204,45 @@ export default function App() {
             </h1>
           </div>
           
-          {/* India Post Logo */}
-          <div className="bg-white p-1 md:p-1.5 rounded-md shadow-sm shrink-0">
-            <img 
-              src="https://upload.wikimedia.org/wikipedia/en/3/32/India_Post.svg" 
-              alt="India Post Logo" 
-              className="h-8 md:h-12 w-auto" 
-              referrerPolicy="no-referrer"
-            />
+          <div className="flex items-center gap-4">
+            {user ? (
+              <div className="flex items-center gap-3 bg-white/10 p-1.5 pr-4 rounded-full border border-white/20">
+                <img 
+                  src={user.photoURL || ''} 
+                  alt={user.displayName || ''} 
+                  className="w-8 h-8 rounded-full border border-white/50"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="hidden md:block">
+                  <p className="text-xs font-bold leading-none">{user.displayName}</p>
+                  <p className="text-[10px] opacity-70 leading-none mt-1">Logged In</p>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                  title="Logout"
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={handleLogin}
+                className="flex items-center gap-2 bg-[#FFC220] text-gray-900 px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#e6af1d] transition-colors shadow-sm"
+              >
+                <LogIn size={18} />
+                Login
+              </button>
+            )}
+            {/* India Post Logo */}
+            <div className="bg-white p-1 md:p-1.5 rounded-md shadow-sm shrink-0 hidden sm:block">
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/en/3/32/India_Post.svg" 
+                alt="India Post Logo" 
+                className="h-8 md:h-12 w-auto" 
+                referrerPolicy="no-referrer"
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -180,396 +270,404 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
         
-        {/* Welcome Section */}
-        <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-300 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to BD Branch Portal</h2>
-            <p className="text-gray-600 max-w-2xl">
-              Access all your business development tools, reports, and customer management interfaces in one centralized location.
-            </p>
-          </div>
-          <div className="bg-[#FFF9E6] p-4 rounded-xl border border-[#FFC220]/30 text-[#E31837] font-semibold">
-            System Status: Online
-          </div>
-        </section>
-
-        {/* Cards Section */}
-        <section id="dashboard">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <LayoutDashboard className="text-[#E31837]" />
-            Core Modules
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            {/* Card 1: BD Interface */}
-            <a href="https://dhenkanal-postal-division-interface.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-blue-50 rounded-xl shadow-sm border-2 border-blue-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-blue-500">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-500 transition-colors">
-                <LayoutDashboard className="text-blue-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">BD Interface</h4>
-              <p className="text-gray-600 text-sm">Main interface for business development operations and tracking.</p>
-            </a>
-
-            {/* Card 2: BNPL */}
-            <a href="https://bnpl-services.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-emerald-50 rounded-xl shadow-sm border-2 border-emerald-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-emerald-500">
-              <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-emerald-500 transition-colors">
-                <CreditCard className="text-emerald-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">BNPL</h4>
-              <p className="text-gray-600 text-sm">Book Now Pay Later services, customer credit management and invoicing.</p>
-            </a>
-
-            {/* Card 3: Advance Customer */}
-            <button 
-              onClick={() => setShowAdvanceModal(true)}
-              className="bg-amber-50 text-left rounded-xl shadow-sm border-2 border-amber-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-amber-500 w-full"
-            >
-              <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-amber-500 transition-colors">
-                <Users className="text-amber-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Advance Customer</h4>
-              <p className="text-gray-600 text-sm">Manage advance deposit accounts, bulk customers, and special clients.</p>
-            </button>
-
-            {/* Advance Customer Modal */}
-            <AnimatePresence>
-              {showAdvanceModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    className="bg-white rounded-2xl shadow-2xl border-t-4 border-[#E31837] w-full max-w-2xl overflow-hidden"
-                  >
-                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <Users className="text-[#E31837]" />
-                        Advance Customer Options
-                      </h3>
-                      <button 
-                        onClick={() => setShowAdvanceModal(false)}
-                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
-                      >
-                        <X size={24} />
-                      </button>
-                    </div>
-                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-white">
-                      {/* Sub-card 1: Advance Customer Data */}
-                      <a 
-                        href="https://docs.google.com/spreadsheets/d/1vn6sGUOy2STwsFihUUjmdcww0IRZBpXiUMy_9JRgY-A/edit?gid=1288268905#gid=1288268905" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="group p-6 rounded-xl border-2 border-gray-200 hover:border-[#E31837] hover:bg-[#FFF9E6]/30 transition-all flex flex-col items-center text-center gap-4"
-                      >
-                        <div className="w-16 h-16 bg-[#FFF9E6] rounded-full flex items-center justify-center group-hover:bg-[#E31837] transition-colors">
-                          <FileText className="text-[#E31837] group-hover:text-white" size={32} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 mb-1">Advance Customer Data</h4>
-                          <p className="text-xs text-gray-500">View detailed spreadsheets and datasets</p>
-                        </div>
-                        <ExternalLink size={16} className="text-[#E31837] opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </a>
-
-                      {/* Sub-card 2: Advance Customer PPT */}
-                      <a 
-                        href="https://advance-customer-facility-dashboard.vercel.app/" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="group p-6 rounded-xl border-2 border-gray-200 hover:border-[#E31837] hover:bg-[#FFF9E6]/30 transition-all flex flex-col items-center text-center gap-4"
-                      >
-                        <div className="w-16 h-16 bg-[#FFF9E6] rounded-full flex items-center justify-center group-hover:bg-[#E31837] transition-colors">
-                          <BarChart3 className="text-[#E31837] group-hover:text-white" size={32} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 mb-1">Advance Customer PPT</h4>
-                          <p className="text-xs text-gray-500">View presentations and dashboards</p>
-                        </div>
-                        <ExternalLink size={16} className="text-[#E31837] opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </a>
-                    </div>
-                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
-                      <button 
-                        onClick={() => setShowAdvanceModal(false)}
-                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </AnimatePresence>
-
-            {/* Card 5: BD Orders/Rules */}
-            <a href="https://bd-products-orders.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-indigo-50 rounded-xl shadow-sm border-2 border-indigo-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-indigo-500">
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-indigo-500 transition-colors">
-                <ClipboardList className="text-indigo-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">BD Orders/Rules</h4>
-              <p className="text-gray-600 text-sm">Latest departmental orders, guidelines, and business rules.</p>
-            </a>
-
-            {/* Card 6: BD report */}
-            <button 
-              onClick={() => setShowReportModal(true)}
-              className="bg-rose-50 text-left rounded-xl shadow-sm border-2 border-rose-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-rose-500 w-full"
-            >
-              <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-rose-500 transition-colors">
-                <BarChart3 className="text-rose-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">BD Report</h4>
-              <p className="text-gray-600 text-sm">Generate revenue reports, performance analytics, and MIS data.</p>
-            </button>
-
-            {/* Card 7: ePost */}
-            <a href="#" className="bg-cyan-50 rounded-xl shadow-sm border-2 border-cyan-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-cyan-500">
-              <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-cyan-500 transition-colors">
-                <Mail className="text-cyan-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">ePost</h4>
-              <p className="text-gray-600 text-sm">Send and receive messages as soft copies through the internet.</p>
-            </a>
-
-            {/* Card 8: ePayment */}
-            <a href="#" className="bg-violet-50 rounded-xl shadow-sm border-2 border-violet-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-violet-500">
-              <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-violet-500 transition-colors">
-                <CreditCard className="text-violet-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">ePayment</h4>
-              <p className="text-gray-600 text-sm">Electronic payment solutions for bills, taxes, and other services.</p>
-            </a>
-
-            {/* Card 9: Direct Post */}
-            <a href="#" className="bg-orange-50 rounded-xl shadow-sm border-2 border-orange-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-orange-500">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-500 transition-colors">
-                <Send className="text-orange-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Direct Post</h4>
-              <p className="text-gray-600 text-sm">Un-addressed direct mail service for advertising and promotion.</p>
-            </a>
-
-            {/* Card 10: Mediapost */}
-            <a href="#" className="bg-fuchsia-50 rounded-xl shadow-sm border-2 border-fuchsia-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-fuchsia-500">
-              <div className="w-12 h-12 bg-fuchsia-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-fuchsia-500 transition-colors">
-                <LayoutDashboard className="text-fuchsia-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Mediapost</h4>
-              <p className="text-gray-600 text-sm">Advertising opportunities on postal stationery and vehicles.</p>
-            </a>
-
-            {/* Card 11: Retail Post */}
-            <a href="#" className="bg-teal-50 rounded-xl shadow-sm border-2 border-teal-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-teal-500">
-              <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-500 transition-colors">
-                <ClipboardList className="text-teal-600 group-hover:text-white transition-colors" size={24} />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Retail Post</h4>
-              <p className="text-gray-600 text-sm">One-stop shop for various third-party services and products.</p>
-            </a>
-
-            {/* BD Report Modal */}
-            <AnimatePresence>
-              {showReportModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    className="bg-white rounded-2xl shadow-2xl border-t-4 border-rose-500 w-full max-w-4xl overflow-hidden"
-                  >
-                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <BarChart3 className="text-rose-600" />
-                        BD Report Modules
-                      </h3>
-                      <button 
-                        onClick={() => setShowReportModal(false)}
-                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
-                      >
-                        <X size={24} />
-                      </button>
-                    </div>
-                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-white overflow-y-auto max-h-[70vh]">
-                      {/* Sub-card 1: Business Performance Report */}
-                      <button 
-                        onClick={() => setShowBPRModal(true)}
-                        className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4"
-                      >
-                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
-                          <BarChart3 className="text-rose-600 group-hover:text-white" size={32} />
-                        </div>
-                        <h4 className="font-bold text-gray-900">Business Performance Report</h4>
-                      </button>
-
-                      {/* Sub-card 2: Gangajal Report */}
-                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
-                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
-                          <FileText className="text-rose-600 group-hover:text-white" size={32} />
-                        </div>
-                        <h4 className="font-bold text-gray-900">Gangajal Report</h4>
-                      </a>
-
-                      {/* Sub-card 3: Flag Sale Report */}
-                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
-                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
-                          <FileText className="text-rose-600 group-hover:text-white" size={32} />
-                        </div>
-                        <h4 className="font-bold text-gray-900">Flag Sale Report</h4>
-                      </a>
-
-                      {/* Sub-card 4: Rakhi Cover Selling Report */}
-                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
-                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
-                          <FileText className="text-rose-600 group-hover:text-white" size={32} />
-                        </div>
-                        <h4 className="font-bold text-gray-900">Rakhi Cover Selling Report</h4>
-                      </a>
-
-                      {/* Sub-card 5: BD Achievements */}
-                      <a href="https://bdachievement-report.edgeone.app/" target="_blank" rel="noopener noreferrer" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
-                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
-                          <BarChart3 className="text-rose-600 group-hover:text-white" size={32} />
-                        </div>
-                        <h4 className="font-bold text-gray-900">BD Achievements</h4>
-                      </a>
-
-                      {/* Sub-card 6: BD Month Wise Report */}
-                      <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
-                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
-                          <ClipboardList className="text-rose-600 group-hover:text-white" size={32} />
-                        </div>
-                        <h4 className="font-bold text-gray-900">BD Month Wise Report</h4>
-                      </a>
-                    </div>
-                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
-                      <button 
-                        onClick={() => setShowReportModal(false)}
-                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </AnimatePresence>
-
-            {/* Business Performance Report (BPR) Modal */}
-            <AnimatePresence>
-              {showBPRModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    className="bg-white rounded-2xl shadow-2xl border-t-4 border-rose-600 w-full max-w-lg overflow-hidden"
-                  >
-                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <BarChart3 className="text-rose-600" />
-                        Business Performance Reports
-                      </h3>
-                      <button 
-                        onClick={() => setShowBPRModal(false)}
-                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
-                      >
-                        <X size={24} />
-                      </button>
-                    </div>
-                    <div className="p-8 space-y-4 bg-white">
-                      <a 
-                        href="https://bdrevenuachievemen2025-26.edgeone.app/" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
-                      >
-                        <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2025-26</span>
-                        <ExternalLink size={18} className="text-rose-600" />
-                      </a>
-                      <a 
-                        href="#" 
-                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
-                      >
-                        <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2026-27</span>
-                        <ExternalLink size={18} className="text-rose-600" />
-                      </a>
-                      <a 
-                        href="#" 
-                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
-                      >
-                        <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2027-28</span>
-                        <ExternalLink size={18} className="text-rose-600" />
-                      </a>
-                    </div>
-                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
-                      <button 
-                        onClick={() => setShowBPRModal(false)}
-                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
-                      >
-                        Back to Reports
-                      </button>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </AnimatePresence>
-
-          </div>
-        </section>
-
-        <div className="max-w-4xl mx-auto space-y-12">
-          {/* Documents Section */}
-          <section id="documents" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <FileText className="text-[#E31837]" />
-              Documents & Resources
-            </h3>
-            <div className="space-y-4">
-              {[
-                "Business Development Manual 2024",
-                "BNPL Agreement Template",
-                "Tariff Structure & Discount Matrix",
-                "Standard Operating Procedures (SOP)"
-              ].map((doc, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <FileText className="text-gray-400" size={20} />
-                    <span className="font-medium text-gray-700">{doc}</span>
-                  </div>
-                  <button className="p-2 text-[#E31837] hover:bg-[#FFF9E6] rounded-md transition-colors" title="Download">
-                    <Download size={18} />
-                  </button>
-                </div>
-              ))}
+        {!user ? (
+          <section className="bg-white rounded-2xl p-12 shadow-sm border border-gray-300 flex flex-col items-center text-center gap-6">
+            <div className="w-20 h-20 bg-[#FFF9E6] rounded-full flex items-center justify-center text-[#E31837]">
+              <ShieldCheck size={48} />
             </div>
-            <button className="mt-6 w-full py-3 text-sm font-semibold text-[#E31837] border border-[#E31837] rounded-lg hover:bg-[#E31837] hover:text-white transition-colors">
-              View All Documents
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Secure Access Required</h2>
+              <p className="text-gray-600 max-w-lg mx-auto">
+                Please login with your official Google account to access the Business Development Branch portal and its core modules.
+              </p>
+            </div>
+            <button 
+              onClick={handleLogin}
+              className="flex items-center gap-3 bg-[#E31837] text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-[#c4152f] transition-all shadow-lg hover:shadow-xl active:scale-95"
+            >
+              <LogIn size={24} />
+              Login with Google
             </button>
           </section>
+        ) : (
+          <>
+            {/* Welcome Section */}
+            <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-300 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {user.displayName}!</h2>
+                <p className="text-gray-600 max-w-2xl">
+                  Access all your business development tools, reports, and customer management interfaces in one centralized location.
+                </p>
+              </div>
+              <div className="bg-[#FFF9E6] p-4 rounded-xl border border-[#FFC220]/30 text-[#E31837] font-semibold">
+                System Status: Online
+              </div>
+            </section>
 
-          {/* Forms Section Placeholder */}
-          <section id="forms" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <ClipboardList className="text-[#E31837]" />
-              Forms & Applications
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                "New BNPL Account Form",
-                "Advance Customer Registration",
-                "Bulk Booking Request",
-                "Discount Approval Form"
-              ].map((form, i) => (
-                <div key={i} className="p-4 rounded-xl border border-gray-200 hover:border-[#E31837] transition-all cursor-pointer group">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-700 group-hover:text-[#E31837]">{form}</span>
-                    <Download size={16} className="text-gray-400 group-hover:text-[#E31837]" />
+            {/* Cards Section */}
+            <section id="dashboard">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <LayoutDashboard className="text-[#E31837]" />
+                Core Modules
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Card 1: BD Interface */}
+                <a href="https://dhenkanal-postal-division-interface.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-blue-50 rounded-xl shadow-sm border-2 border-blue-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-blue-500">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-500 transition-colors">
+                    <LayoutDashboard className="text-blue-600 group-hover:text-white transition-colors" size={24} />
                   </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">BD Interface</h4>
+                  <p className="text-gray-600 text-sm">Main interface for business development operations and tracking.</p>
+                </a>
+
+                {/* Card 2: BNPL */}
+                <a href="https://bnpl-services.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-emerald-50 rounded-xl shadow-sm border-2 border-emerald-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-emerald-500">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-emerald-500 transition-colors">
+                    <CreditCard className="text-emerald-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">BNPL</h4>
+                  <p className="text-gray-600 text-sm">Book Now Pay Later services, customer credit management and invoicing.</p>
+                </a>
+
+                {/* Card 3: Advance Customer */}
+                <button 
+                  onClick={() => setShowAdvanceModal(true)}
+                  className="bg-amber-50 text-left rounded-xl shadow-sm border-2 border-amber-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-amber-500 w-full"
+                >
+                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-amber-500 transition-colors">
+                    <Users className="text-amber-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Advance Customer</h4>
+                  <p className="text-gray-600 text-sm">Manage advance deposit accounts, bulk customers, and special clients.</p>
+                </button>
+
+                {/* Card 5: BD Orders/Rules */}
+                <a href="https://bd-products-orders.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-indigo-50 rounded-xl shadow-sm border-2 border-indigo-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-indigo-500">
+                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-indigo-500 transition-colors">
+                    <ClipboardList className="text-indigo-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">BD Orders/Rules</h4>
+                  <p className="text-gray-600 text-sm">Latest departmental orders, guidelines, and business rules.</p>
+                </a>
+
+                {/* Card 6: BD report */}
+                <button 
+                  onClick={() => setShowReportModal(true)}
+                  className="bg-rose-50 text-left rounded-xl shadow-sm border-2 border-rose-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-rose-500 w-full"
+                >
+                  <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-rose-500 transition-colors">
+                    <BarChart3 className="text-rose-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">BD Report</h4>
+                  <p className="text-gray-600 text-sm">Generate revenue reports, performance analytics, and MIS data.</p>
+                </button>
+
+                {/* Card 7: ePost */}
+                <a href="#" className="bg-cyan-50 rounded-xl shadow-sm border-2 border-cyan-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-cyan-500">
+                  <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-cyan-500 transition-colors">
+                    <Mail className="text-cyan-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">ePost</h4>
+                  <p className="text-gray-600 text-sm">Send and receive messages as soft copies through the internet.</p>
+                </a>
+
+                {/* Card 8: ePayment */}
+                <a href="#" className="bg-violet-50 rounded-xl shadow-sm border-2 border-violet-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-violet-500">
+                  <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-violet-500 transition-colors">
+                    <CreditCard className="text-violet-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">ePayment</h4>
+                  <p className="text-gray-600 text-sm">Electronic payment solutions for bills, taxes, and other services.</p>
+                </a>
+
+                {/* Card 9: Direct Post */}
+                <a href="#" className="bg-orange-50 rounded-xl shadow-sm border-2 border-orange-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-orange-500">
+                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-500 transition-colors">
+                    <Send className="text-orange-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Direct Post</h4>
+                  <p className="text-gray-600 text-sm">Un-addressed direct mail service for advertising and promotion.</p>
+                </a>
+
+                {/* Card 10: Mediapost */}
+                <a href="#" className="bg-fuchsia-50 rounded-xl shadow-sm border-2 border-fuchsia-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-fuchsia-500">
+                  <div className="w-12 h-12 bg-fuchsia-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-fuchsia-500 transition-colors">
+                    <LayoutDashboard className="text-fuchsia-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Mediapost</h4>
+                  <p className="text-gray-600 text-sm">Advertising opportunities on postal stationery and vehicles.</p>
+                </a>
+
+                {/* Card 11: Retail Post */}
+                <a href="#" className="bg-teal-50 rounded-xl shadow-sm border-2 border-teal-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-teal-500">
+                  <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-500 transition-colors">
+                    <ClipboardList className="text-teal-600 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Retail Post</h4>
+                  <p className="text-gray-600 text-sm">One-stop shop for various third-party services and products.</p>
+                </a>
+              </div>
+
+              {/* Modals */}
+              {/* Advance Customer Modal */}
+              <AnimatePresence>
+                {showAdvanceModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                      className="bg-white rounded-2xl shadow-2xl border-t-4 border-[#E31837] w-full max-w-2xl overflow-hidden"
+                    >
+                      <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                          <Users className="text-[#E31837]" />
+                          Advance Customer Options
+                        </h3>
+                        <button 
+                          onClick={() => setShowAdvanceModal(false)}
+                          className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                        >
+                          <X size={24} />
+                        </button>
+                      </div>
+                      <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-white">
+                        <a 
+                          href="https://docs.google.com/spreadsheets/d/1vn6sGUOy2STwsFihUUjmdcww0IRZBpXiUMy_9JRgY-A/edit?gid=1288268905#gid=1288268905" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="group p-6 rounded-xl border-2 border-gray-200 hover:border-[#E31837] hover:bg-[#FFF9E6]/30 transition-all flex flex-col items-center text-center gap-4"
+                        >
+                          <div className="w-16 h-16 bg-[#FFF9E6] rounded-full flex items-center justify-center group-hover:bg-[#E31837] transition-colors">
+                            <FileText className="text-[#E31837] group-hover:text-white" size={32} />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-900 mb-1">Advance Customer Data</h4>
+                            <p className="text-xs text-gray-500">View detailed spreadsheets and datasets</p>
+                          </div>
+                          <ExternalLink size={16} className="text-[#E31837] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                        <a 
+                          href="https://advance-customer-facility-dashboard.vercel.app/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="group p-6 rounded-xl border-2 border-gray-200 hover:border-[#E31837] hover:bg-[#FFF9E6]/30 transition-all flex flex-col items-center text-center gap-4"
+                        >
+                          <div className="w-16 h-16 bg-[#FFF9E6] rounded-full flex items-center justify-center group-hover:bg-[#E31837] transition-colors">
+                            <BarChart3 className="text-[#E31837] group-hover:text-white" size={32} />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-900 mb-1">Advance Customer PPT</h4>
+                            <p className="text-xs text-gray-500">View presentations and dashboards</p>
+                          </div>
+                          <ExternalLink size={16} className="text-[#E31837] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                      </div>
+                      <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                        <button 
+                          onClick={() => setShowAdvanceModal(false)}
+                          className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
+
+              {/* BD Report Modal */}
+              <AnimatePresence>
+                {showReportModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                      className="bg-white rounded-2xl shadow-2xl border-t-4 border-rose-500 w-full max-w-4xl overflow-hidden"
+                    >
+                      <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                          <BarChart3 className="text-rose-600" />
+                          BD Report Modules
+                        </h3>
+                        <button 
+                          onClick={() => setShowReportModal(false)}
+                          className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                        >
+                          <X size={24} />
+                        </button>
+                      </div>
+                      <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-white overflow-y-auto max-h-[70vh]">
+                        <button 
+                          onClick={() => setShowBPRModal(true)}
+                          className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4"
+                        >
+                          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                            <BarChart3 className="text-rose-600 group-hover:text-white" size={32} />
+                          </div>
+                          <h4 className="font-bold text-gray-900">Business Performance Report</h4>
+                        </button>
+                        <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                            <FileText className="text-rose-600 group-hover:text-white" size={32} />
+                          </div>
+                          <h4 className="font-bold text-gray-900">Gangajal Report</h4>
+                        </a>
+                        <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                            <FileText className="text-rose-600 group-hover:text-white" size={32} />
+                          </div>
+                          <h4 className="font-bold text-gray-900">Flag Sale Report</h4>
+                        </a>
+                        <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                            <FileText className="text-rose-600 group-hover:text-white" size={32} />
+                          </div>
+                          <h4 className="font-bold text-gray-900">Rakhi Cover Selling Report</h4>
+                        </a>
+                        <a href="https://bdachievement-report.edgeone.app/" target="_blank" rel="noopener noreferrer" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                            <BarChart3 className="text-rose-600 group-hover:text-white" size={32} />
+                          </div>
+                          <h4 className="font-bold text-gray-900">BD Achievements</h4>
+                        </a>
+                        <a href="#" className="group p-6 rounded-xl border-2 border-gray-200 hover:border-rose-500 hover:bg-rose-50 transition-all flex flex-col items-center text-center gap-4">
+                          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors">
+                            <ClipboardList className="text-rose-600 group-hover:text-white" size={32} />
+                          </div>
+                          <h4 className="font-bold text-gray-900">BD Month Wise Report</h4>
+                        </a>
+                      </div>
+                      <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                        <button 
+                          onClick={() => setShowReportModal(false)}
+                          className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
+
+              {/* Business Performance Report (BPR) Modal */}
+              <AnimatePresence>
+                {showBPRModal && (
+                  <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                      className="bg-white rounded-2xl shadow-2xl border-t-4 border-rose-600 w-full max-w-lg overflow-hidden"
+                    >
+                      <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                          <BarChart3 className="text-rose-600" />
+                          Business Performance Reports
+                        </h3>
+                        <button 
+                          onClick={() => setShowBPRModal(false)}
+                          className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                        >
+                          <X size={24} />
+                        </button>
+                      </div>
+                      <div className="p-8 space-y-4 bg-white">
+                        <a 
+                          href="https://bdrevenuachievemen2025-26.edgeone.app/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
+                        >
+                          <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2025-26</span>
+                          <ExternalLink size={18} className="text-rose-600" />
+                        </a>
+                        <a 
+                          href="#" 
+                          className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
+                        >
+                          <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2026-27</span>
+                          <ExternalLink size={18} className="text-rose-600" />
+                        </a>
+                        <a 
+                          href="#" 
+                          className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-rose-500 hover:bg-rose-50 transition-all group"
+                        >
+                          <span className="font-bold text-gray-700 group-hover:text-rose-600">BPR Report 2027-28</span>
+                          <ExternalLink size={18} className="text-rose-600" />
+                        </a>
+                      </div>
+                      <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                        <button 
+                          onClick={() => setShowBPRModal(false)}
+                          className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+                        >
+                          Back to Reports
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
+            </section>
+
+            <div className="max-w-4xl mx-auto space-y-12">
+              {/* Documents Section */}
+              <section id="documents" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <FileText className="text-[#E31837]" />
+                  Documents & Resources
+                </h3>
+                <div className="space-y-4">
+                  {[
+                    "Business Development Manual 2024",
+                    "BNPL Agreement Template",
+                    "Tariff Structure & Discount Matrix",
+                    "Standard Operating Procedures (SOP)"
+                  ].map((doc, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <FileText className="text-gray-400" size={20} />
+                        <span className="font-medium text-gray-700">{doc}</span>
+                      </div>
+                      <button className="p-2 text-[#E31837] hover:bg-[#FFF9E6] rounded-md transition-colors" title="Download">
+                        <Download size={18} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <button className="mt-6 w-full py-3 text-sm font-semibold text-[#E31837] border border-[#E31837] rounded-lg hover:bg-[#E31837] hover:text-white transition-colors">
+                  View All Documents
+                </button>
+              </section>
+
+              {/* Forms Section Placeholder */}
+              <section id="forms" className="bg-white rounded-2xl shadow-sm border border-gray-300 p-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <ClipboardList className="text-[#E31837]" />
+                  Forms & Applications
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    "New BNPL Account Form",
+                    "Advance Customer Registration",
+                    "Bulk Booking Request",
+                    "Discount Approval Form"
+                  ].map((form, i) => (
+                    <div key={i} className="p-4 rounded-xl border border-gray-200 hover:border-[#E31837] transition-all cursor-pointer group">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700 group-hover:text-[#E31837]">{form}</span>
+                        <Download size={16} className="text-gray-400 group-hover:text-[#E31837]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
-          </section>
-        </div>
+          </>
+        )}
       </main>
 
       {/* Footer */}

@@ -25,7 +25,8 @@ import {
   Plus,
   Youtube,
   Video,
-  Menu
+  Menu,
+  GraduationCap
 } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
 import { doc, setDoc, getDoc, collection, onSnapshot, addDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
@@ -378,6 +379,7 @@ export default function App() {
                   { name: 'Documents', href: '#documents', type: 'document', icon: <FileText size={20} /> },
                   { name: 'Forms', href: '#forms', type: 'form', icon: <ClipboardList size={20} /> },
                   { name: 'Videos', href: '#videos', type: 'video', icon: <Youtube size={20} /> },
+                  { name: 'DakShikha', href: 'https://dakshiksha.netlify.app/', icon: <GraduationCap size={20} />, active: true },
                   ...(isAdmin ? [{ name: 'Admin Panel', onClick: () => { setShowAdminPanel(!showAdminPanel); setIsMobileMenuOpen(false); }, icon: <ShieldCheck size={20} /> }] : [])
                 ].map((item) => (
                   <div key={item.name} className="space-y-1">
@@ -387,10 +389,14 @@ export default function App() {
                         if (item.onClick) {
                           e.preventDefault();
                           item.onClick();
+                        } else if (item.href && item.href.startsWith('http')) {
+                          // Allow external links
                         } else if (!item.type) {
                           setIsMobileMenuOpen(false);
                         }
                       }}
+                      target={item.href && item.href.startsWith('http') ? "_blank" : undefined}
+                      rel={item.href && item.href.startsWith('http') ? "noopener noreferrer" : undefined}
                       className="flex items-center justify-between p-3 rounded-xl text-gray-700 font-bold hover:bg-gray-50 hover:text-[#E31837] transition-all"
                     >
                       <div className="flex items-center gap-3">
@@ -446,6 +452,7 @@ export default function App() {
             { name: 'Documents', href: '#documents', type: 'document', icon: <FileText size={18} /> },
             { name: 'Forms', href: '#forms', type: 'form', icon: <ClipboardList size={18} /> },
             { name: 'Videos', href: '#videos', type: 'video', icon: <Youtube size={18} /> },
+            { name: 'DakShikha', href: 'https://dakshiksha.netlify.app/', icon: <GraduationCap size={18} /> },
             ...(isAdmin ? [{ name: 'Admin Panel', onClick: () => setShowAdminPanel(!showAdminPanel), icon: <ShieldCheck size={18} /> }] : [])
           ].map((item) => (
             <div 
@@ -456,6 +463,8 @@ export default function App() {
             >
               <a 
                 href={item.href || '#'} 
+                target={item.href && item.href.startsWith('http') ? "_blank" : undefined}
+                rel={item.href && item.href.startsWith('http') ? "noopener noreferrer" : undefined}
                 onClick={(e) => {
                   if (item.onClick) {
                     e.preventDefault();

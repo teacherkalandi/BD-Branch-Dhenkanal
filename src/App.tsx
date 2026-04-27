@@ -187,7 +187,6 @@ function HeroSlider() {
 }
 
 export default function App() {
-  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showBPRModal, setShowBPRModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -693,26 +692,14 @@ export default function App() {
                   <p className="text-gray-600 text-sm">Main interface for business development operations and tracking.</p>
                 </a>
 
-                {/* Card 2: BNPL */}
+                {/* Card 2: BNPL & Advance Customer */}
                 <a href="https://bnpl-services.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-emerald-50 rounded-xl shadow-sm border-2 border-emerald-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-emerald-500">
                   <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-emerald-500 transition-colors">
                     <CreditCard className="text-emerald-600 group-hover:text-white transition-colors" size={24} />
                   </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">BNPL</h4>
-                  <p className="text-gray-600 text-sm">Book Now Pay Later services, customer credit management and invoicing.</p>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">BNPL & Advance Customer</h4>
+                  <p className="text-gray-600 text-sm">Book Now Pay Later services, customer credit management, and advance deposit accounts.</p>
                 </a>
-
-                {/* Card 3: Advance Customer */}
-                <button 
-                  onClick={() => setShowAdvanceModal(true)}
-                  className="bg-amber-50 text-left rounded-xl shadow-sm border-2 border-amber-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-amber-500 w-full"
-                >
-                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-amber-500 transition-colors">
-                    <Users className="text-amber-600 group-hover:text-white transition-colors" size={24} />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">Advance Customer</h4>
-                  <p className="text-gray-600 text-sm">Manage advance deposit accounts, bulk customers, and special clients.</p>
-                </button>
 
                 {/* Card 5: BD Orders/Rules */}
                 <a href="https://bd-products-orders.vercel.app/" target="_blank" rel="noopener noreferrer" className="bg-indigo-50 rounded-xl shadow-sm border-2 border-indigo-200 p-6 hover:shadow-md transition-all group cursor-pointer hover:border-indigo-500">
@@ -782,73 +769,6 @@ export default function App() {
               </div>
 
               {/* Modals */}
-              {/* Advance Customer Modal */}
-              <AnimatePresence>
-                {showAdvanceModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                      className="bg-white rounded-2xl shadow-2xl border-t-4 border-[#E31837] w-full max-w-2xl overflow-hidden"
-                    >
-                      <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                          <Users className="text-[#E31837]" />
-                          Advance Customer Options
-                        </h3>
-                        <button 
-                          onClick={() => setShowAdvanceModal(false)}
-                          className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
-                        >
-                          <X size={24} />
-                        </button>
-                      </div>
-                      <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-white">
-                        <a 
-                          href="https://docs.google.com/spreadsheets/d/1vn6sGUOy2STwsFihUUjmdcww0IRZBpXiUMy_9JRgY-A/edit?gid=1288268905#gid=1288268905" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="group p-6 rounded-xl border-2 border-gray-200 hover:border-[#E31837] hover:bg-[#FFF9E6]/30 transition-all flex flex-col items-center text-center gap-4"
-                        >
-                          <div className="w-16 h-16 bg-[#FFF9E6] rounded-full flex items-center justify-center group-hover:bg-[#E31837] transition-colors">
-                            <FileText className="text-[#E31837] group-hover:text-white" size={32} />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 mb-1">Advance Customer Data</h4>
-                            <p className="text-xs text-gray-500">View detailed spreadsheets and datasets</p>
-                          </div>
-                          <ExternalLink size={16} className="text-[#E31837] opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </a>
-                        <a 
-                          href="https://advance-customer-facility-dashboard.vercel.app/" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="group p-6 rounded-xl border-2 border-gray-200 hover:border-[#E31837] hover:bg-[#FFF9E6]/30 transition-all flex flex-col items-center text-center gap-4"
-                        >
-                          <div className="w-16 h-16 bg-[#FFF9E6] rounded-full flex items-center justify-center group-hover:bg-[#E31837] transition-colors">
-                            <BarChart3 className="text-[#E31837] group-hover:text-white" size={32} />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 mb-1">Advance Customer PPT</h4>
-                            <p className="text-xs text-gray-500">View presentations and dashboards</p>
-                          </div>
-                          <ExternalLink size={16} className="text-[#E31837] opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </a>
-                      </div>
-                      <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
-                        <button 
-                          onClick={() => setShowAdvanceModal(false)}
-                          className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
-                        >
-                          Close
-                        </button>
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
-              </AnimatePresence>
-
               {/* BD Report Modal */}
               <AnimatePresence>
                 {showReportModal && (
